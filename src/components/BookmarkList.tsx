@@ -6,7 +6,7 @@ import { Bookmark } from '@/types'
 import { Trash2, ExternalLink, Calendar, Link2, AlertCircle, Loader2, Edit2, X, Type, Link as LinkIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-export default function BookmarkList({ initialBookmarks }: { initialBookmarks: Bookmark[] }) {
+export default function BookmarkList({ initialBookmarks, userId }: { initialBookmarks: Bookmark[], userId: string }) {
     const [bookmarks, setBookmarks] = useState<Bookmark[]>(initialBookmarks)
 
     // Delete State
@@ -28,7 +28,12 @@ export default function BookmarkList({ initialBookmarks }: { initialBookmarks: B
             .channel('realtime bookmarks')
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'bookmarks' },
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'bookmarks',
+                    filter: `user_id=eq.${userId}`
+                },
                 (payload) => {
                     if (payload.eventType === 'INSERT') {
                         setBookmarks((prev) => [payload.new as Bookmark, ...prev])
@@ -44,7 +49,7 @@ export default function BookmarkList({ initialBookmarks }: { initialBookmarks: B
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [supabase, initialBookmarks])
+    }, [supabase, initialBookmarks, userId])
 
     // --- DELETE HANDLERS ---
     const confirmDelete = async () => {

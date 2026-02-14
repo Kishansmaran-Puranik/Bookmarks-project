@@ -68,7 +68,7 @@ export default async function Home() {
         </div>
 
         {/* Content Area */}
-        <BookmarkList initialBookmarks={bookmarks || []} />
+        <BookmarkList initialBookmarks={bookmarks || []} userId={user.id} />
       </main>
     </div>
   )
