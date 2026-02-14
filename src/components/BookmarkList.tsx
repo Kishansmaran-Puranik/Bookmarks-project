@@ -32,7 +32,9 @@ export default function BookmarkList({ initialBookmarks, userId }: { initialBook
                     event: '*',
                     schema: 'public',
                     table: 'bookmarks',
-                    filter: `user_id=eq.${userId}`
+                    // We remove the filter here because DELETE events often don't contain the user_id in the payload
+                    // (unless REPLICA IDENTITY is FULL, but even then RLS handles the security).
+                    // Supabase Realtime respects RLS, so users will only receive their own events anyway.
                 },
                 (payload) => {
                     if (payload.eventType === 'INSERT') {

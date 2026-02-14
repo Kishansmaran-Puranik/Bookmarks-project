@@ -17,6 +17,9 @@ create table if not exists public.bookmarks (
 -- 2. Enable Row Level Security (RLS)
 alter table public.bookmarks enable row level security;
 
+-- 2.1 Enable Full Replica Identity (Required for Realtime Delete/Update)
+alter table public.bookmarks replica identity full;
+
 -- 3. Clean up existing policies (to ensure clean slate if re-running)
 drop policy if exists "Users can view own bookmarks" on bookmarks;
 drop policy if exists "Users can insert own bookmarks" on bookmarks;
