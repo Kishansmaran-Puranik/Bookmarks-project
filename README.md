@@ -35,7 +35,7 @@ A simple, beautiful, and secure bookmark manager built with Next.js, Supabase, a
 
 3.  **Supabase Setup**:
     - Create a new project on Supabase.
-    - Run the SQL queries in `supabase_schema.sql` in the Supabase SQL Editor to set up the table and RLS policies.
+    - Run the SQL queries in `supabase_setup.sql` in the Supabase SQL Editor to set up the table and RLS policies.
     - Enable **Google OAuth** in Authentication -> Providers.
     - Enable **Realtime** for the `bookmarks` table in Database -> Replication.
 
