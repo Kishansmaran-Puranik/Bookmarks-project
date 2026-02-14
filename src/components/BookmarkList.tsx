@@ -3,13 +3,22 @@
 import { createClient } from '@/utils/supabase/client'
 import { useEffect, useState } from 'react'
 import { Bookmark } from '@/types'
-import { Trash2, ExternalLink, Calendar, Link2, AlertCircle, Loader2 } from 'lucide-react'
+import { Trash2, ExternalLink, Calendar, Link2, AlertCircle, Loader2, Edit2, X, Type, Link as LinkIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function BookmarkList({ initialBookmarks }: { initialBookmarks: Bookmark[] }) {
     const [bookmarks, setBookmarks] = useState<Bookmark[]>(initialBookmarks)
+
+    // Delete State
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+
+    // Edit State
+    const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null)
+    const [editTitle, setEditTitle] = useState('')
+    const [editUrl, setEditUrl] = useState('')
+    const [isSaving, setIsSaving] = useState(false)
+
     const supabase = createClient()
 
     useEffect(() => {
@@ -37,11 +46,11 @@ export default function BookmarkList({ initialBookmarks }: { initialBookmarks: B
         }
     }, [supabase, initialBookmarks])
 
+    // --- DELETE HANDLERS ---
     const confirmDelete = async () => {
         if (!deletingId) return
         setIsDeleting(true)
 
-        // Optimistic update could go here, but for now we rely on realtime
         const { error } = await supabase.from('bookmarks').delete().eq('id', deletingId)
 
         setIsDeleting(false)
@@ -53,6 +62,34 @@ export default function BookmarkList({ initialBookmarks }: { initialBookmarks: B
         }
     }
 
+    // --- EDIT HANDLERS ---
+    const startEditing = (bookmark: Bookmark) => {
+        setEditingBookmark(bookmark)
+        setEditTitle(bookmark.title)
+        setEditUrl(bookmark.url)
+    }
+
+    const saveEdit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editingBookmark) return
+
+        setIsSaving(true)
+        const { error } = await supabase
+            .from('bookmarks')
+            .update({ title: editTitle, url: editUrl })
+            .eq('id', editingBookmark.id)
+
+        setIsSaving(false)
+
+        if (error) {
+            console.error('Error updating:', error)
+            alert('Failed to update bookmark')
+        } else {
+            setEditingBookmark(null)
+        }
+    }
+
+    // --- UTILS ---
     const getFaviconUrl = (url: string) => {
         try {
             const domain = new URL(url).hostname
@@ -99,7 +136,6 @@ export default function BookmarkList({ initialBookmarks }: { initialBookmarks: B
                             <div>
                                 <div className="mb-4 flex items-start justify-between">
                                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-700 p-2 shadow-inner">
-                                        {/* Fallback icon if image fails to load (browser handles missing src gracefully usually, but we can just use img) */}
                                         <img
                                             src={getFaviconUrl(bookmark.url)}
                                             alt=""
@@ -108,15 +144,23 @@ export default function BookmarkList({ initialBookmarks }: { initialBookmarks: B
                                                 e.currentTarget.style.display = 'none'
                                             }}
                                         />
-                                        {/* Backup Icon logic would be complex in one line, relying on CSS hiding if img fails or empty */}
                                     </div>
-                                    <button
-                                        onClick={() => setDeletingId(bookmark.id)}
-                                        className="rounded-lg p-2 text-gray-400 transition-opacity hover:bg-red-50 hover:text-red-500 focus:opacity-100 dark:hover:bg-red-900/20 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                                        aria-label="Delete bookmark"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => startEditing(bookmark)}
+                                            className="rounded-lg p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-500 focus:opacity-100 dark:hover:bg-blue-900/20"
+                                            aria-label="Edit bookmark"
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => setDeletingId(bookmark.id)}
+                                            className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 focus:opacity-100 dark:hover:bg-red-900/20"
+                                            aria-label="Delete bookmark"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <h3 className="mb-1 font-bold text-gray-900 dark:text-white line-clamp-2" title={bookmark.title}>
@@ -182,6 +226,79 @@ export default function BookmarkList({ initialBookmarks }: { initialBookmarks: B
                                     Delete
                                 </button>
                             </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Bookmark Modal */}
+            <AnimatePresence>
+                {editingBookmark && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="w-full max-w-md overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl ring-1 ring-gray-200 dark:ring-gray-700"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Bookmark</h3>
+                                <button
+                                    onClick={() => setEditingBookmark(null)}
+                                    className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={saveEdit} className="space-y-5">
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                                        <Type className="w-4 h-4" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={editTitle}
+                                        onChange={(e) => setEditTitle(e.target.value)}
+                                        className="block w-full rounded-xl border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 py-3 pl-10 text-sm focus:border-blue-500 focus:ring-blue-500 dark:text-white"
+                                        placeholder="Bookmark Title"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                                        <LinkIcon className="w-4 h-4" />
+                                    </div>
+                                    <input
+                                        type="url"
+                                        value={editUrl}
+                                        onChange={(e) => setEditUrl(e.target.value)}
+                                        className="block w-full rounded-xl border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 py-3 pl-10 text-sm focus:border-blue-500 focus:ring-blue-500 dark:text-white"
+                                        placeholder="https://example.com"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="flex justify-end pt-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditingBookmark(null)}
+                                        disabled={isSaving}
+                                        className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isSaving}
+                                        className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50"
+                                    >
+                                        {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </form>
                         </motion.div>
                     </div>
                 )}
