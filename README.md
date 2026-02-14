@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Smart Bookmark App
 
-## Getting Started
+A simple, beautiful, and secure bookmark manager built with Next.js, Supabase, and Tailwind CSS.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Google OAuth Login**: Secure sign-in without passwords.
+- **Private Bookmarks**: Each user has their own isolated list of bookmarks.
+- **Real-time Updates**: Changes appear instantly across multiple tabs/devices using Supabase Realtime.
+- **Responsive Design**: Works great on mobile and desktop.
+- **Animations**: Smooth transitions with Framer Motion.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Frontend**: Next.js 14 (App Router), React, Tailwind CSS, Framer Motion
+- **Backend**: Supabase (Postgres, Auth, Realtime)
+- **Icons**: Lucide React
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Setup Instructions
 
-## Learn More
+1.  **Clone the repo**:
+    ```bash
+    git clone <repo-url>
+    cd smart-bookmark-app
+    npm install
+    ```
 
-To learn more about Next.js, take a look at the following resources:
+2.  **Environment Variables**:
+    Create a `.env.local` file with:
+    ```
+    NEXT_PUBLIC_SUPABASE_URL=your-project-url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+    NEXT_PUBLIC_SITE_URL=http://localhost:3000
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3.  **Supabase Setup**:
+    - Create a new project on Supabase.
+    - Run the SQL queries in `supabase_schema.sql` in the Supabase SQL Editor to set up the table and RLS policies.
+    - Enable **Google OAuth** in Authentication -> Providers.
+    - Enable **Realtime** for the `bookmarks` table in Database -> Replication.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4.  **Run Locally**:
+    ```bash
+    npm run dev
+    ```
 
-## Deploy on Vercel
+## Challenges & Solutions
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 1. Real-time Subscription with RLS
+**Problem**: Initially, I wasn't sure if `postgres_changes` would respect RLS policies for the `INSERT` events on the client side.
+**Solution**: Supabase Realtime respects RLS. By enabling RLS and setting policies to `auth.uid() = user_id`, users only receive events for their own data. I configured the channel to listen to `schema: 'public', table: 'bookmarks'` and it worked seamlessly.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 2. Middleware & Session Management
+**Problem**: Keeping the session in sync between Server Components and Client Components in Next.js App Router.
+**Solution**: Used the standard Supabase SSR middleware pattern. The `updateSession` function in middleware ensures the auth cookie is refreshed and valid for every request, preventing stale sessions.
+
+### 3. Hydration Validations
+**Problem**: Rendering time-dependent data or random values can cause hydration mismatches.
+**Solution**: I ensured that the `BookmarkList` component initializes with the server-passed data and then strictly relies on client-side state updates for realtime changes, avoiding any initial render mismatch.

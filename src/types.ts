@@ -1,0 +1,7 @@
+export type Bookmark = {
+    id: string
+    created_at: string
+    user_id: string
+    title: string
+    url: string
+}
